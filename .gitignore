@@ -1,0 +1,66 @@
+# Entornos y secretos
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+env/
+ENV/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+.Python
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+pip-wheel-metadata/
+*.egg-info/
+build/
+dist/
+site/
+
+# Jupyter y notebooks
+.ipynb_checkpoints/
+*.nbconvert.ipynb
+
+# Datos y salidas generadas localmente
+*.log
+logs/
+tmp/
+temp/
+output/
+outputs/
+reports/
+artifacts/
+
+# Configuración local de IDE
+.idea/
+
+# Archivos de macOS, Linux y otros sistemas
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100/
+.Trashes/
+.fseventsd/
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Entornos Docker y archivos locales comunes
+.docker/
+docker-compose.override.yml
+
+# Variables y archivos específicos de herramientas de datos
+.streamlit/
+.panel/
+.snakemake/
+.dask/
+.cache/
