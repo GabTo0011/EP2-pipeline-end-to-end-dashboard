@@ -129,8 +129,10 @@ async def lifespan(app: FastAPI):
     # =====================================================
 
     cur.execute("SELECT COUNT(*) FROM comunas;")
+    resultado = cur.fetchone()
 
-    if cur.fetchone()[0] == 0:
+    if resultado and resultado[0] == 0:
+
 
         # ==========================
         # COMUNAS
@@ -560,3 +562,9 @@ def obtener_monitoreo():
     ]
 
     return lista_monitoreo
+
+@app.get("/")
+def home():
+    return {
+        "mensaje": "API Movilidad Urbana RM funcionando"
+    }
