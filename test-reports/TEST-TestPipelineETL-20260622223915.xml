@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="TestPipelineETL-20260622223915" tests="4" file=".py" time="0.005" timestamp="2026-06-22T22:39:15" failures="0" errors="0" skipped="0">
+	<testcase classname="TestPipelineETL" name="test_ejecutar_pipeline" time="0.001" timestamp="2026-06-22T22:39:15" file="tests/test_pipeline_etl.py" line="67">
+		<!--
+        Prueba la ejecución completa del pipeline, verificando que se llamen las funciones
+        de extracción y guardado para cada fuente de datos.
+        -->
+		<system-out><![CDATA[Extrayendo comunas...
+Extrayendo paraderos...
+Extrayendo recorridos...
+Extrayendo monitoreo...
+Extrayendo dataset consolidado...
+ETL finalizado correctamente
+]]></system-out>
+	</testcase>
+	<testcase classname="TestPipelineETL" name="test_extraer_datos_failure" time="0.001" timestamp="2026-06-22T22:39:15" file="tests/test_pipeline_etl.py" line="34">
+		<!--
+        Prueba que la función extraer_datos maneje correctamente un error de la API.
+        -->
+	</testcase>
+	<testcase classname="TestPipelineETL" name="test_extraer_datos_success" time="0.001" timestamp="2026-06-22T22:39:15" file="tests/test_pipeline_etl.py" line="16">
+		<!--
+        Prueba que la función extraer_datos procese correctamente una respuesta exitosa de la API.
+        -->
+	</testcase>
+	<testcase classname="TestPipelineETL" name="test_guardar_csv" time="0.003" timestamp="2026-06-22T22:39:15" file="tests/test_pipeline_etl.py" line="48">
+		<!--
+        Prueba que la función guardar_csv llame correctamente al método to_csv de pandas.
+        -->
+		<system-out><![CDATA[test.csv generado
+]]></system-out>
+	</testcase>
+</testsuite>
