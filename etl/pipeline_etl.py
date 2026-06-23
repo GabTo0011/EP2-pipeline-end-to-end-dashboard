@@ -56,23 +56,9 @@ def ejecutar_pipeline():
         )
 
         print("Extrayendo dataset consolidado...")
-
-        datos_analiticas = extraer_datos(
-            URL_ANALITICAS
-        )
-
-        df_analiticas = pd.DataFrame(
-            datos_analiticas
-        )
-
-        df_analiticas.to_csv(
-            "dataset_movilidad_rm.csv",
-            index=False,
-            encoding="utf-8"
-        )
-
-        print(
-            "dataset_movilidad_rm.csv generado"
+        guardar_csv(
+            extraer_datos(URL_ANALITICAS),
+            "dataset_movilidad_rm.csv"
         )
 
         print("ETL finalizado correctamente")
