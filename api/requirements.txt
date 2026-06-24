@@ -1,3 +1,20 @@
-Flask==3.0.3
+# =============================================================================
+# Dependencias de la API - Movilidad RM
+# =============================================================================
+# Versiones fijas (pinned) para garantizar reproducibilidad en contenedores.
+# =============================================================================
+
+# Framework web asíncrono (usado en main.py)
+fastapi==0.115.0
+
+# Servidor ASGI para FastAPI (worker para gunicorn)
+uvicorn[standard]==0.30.6
+
+# Servidor WSGI/ASGI de producción (gestiona workers)
 gunicorn==22.0.0
-json==2.0.9
+
+# Driver de conexión a PostgreSQL
+psycopg2-binary==2.9.9
+
+# Flask se mantiene por compatibilidad con rutas legacy (/data)
+Flask==3.0.3

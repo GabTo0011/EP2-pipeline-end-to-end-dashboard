@@ -1,0 +1,46 @@
+# =============================================================================
+# .dockerignore - Dashboard Streamlit
+# =============================================================================
+# Excluye archivos innecesarios del contexto de build para reducir
+# el tamaño de la imagen y acelerar la construcción.
+# =============================================================================
+
+# Control de versiones
+.git
+.gitignore
+
+# Entornos virtuales de Python
+.venv/
+venv/
+env/
+ENV/
+
+# Cache de Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Archivos de entorno (pueden contener secretos)
+.env
+.env.*
+
+# Archivos temporales del sistema operativo
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Notebooks y archivos de desarrollo
+*.ipynb
+.ipynb_checkpoints/
+
+# Logs y temporales
+*.log
+logs/
+tmp/
+temp/
+
+# Documentación (no necesaria en la imagen)
+*.md

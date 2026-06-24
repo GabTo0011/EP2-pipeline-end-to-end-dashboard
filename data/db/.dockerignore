@@ -1,0 +1,13 @@
+.git
+.gitignore
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.log
+logs/
+tmp/
+temp/
+.env
+.env.*
+.ipynb_checkpoints/
+*.nbconvert.ipynb
