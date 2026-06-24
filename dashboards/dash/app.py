@@ -16,7 +16,7 @@ def cargar_datos():
     """Carga el dataset consolidado de movilidad."""
     # La ruta es relativa a la ubicación del script del dashboard
     # Se asume que el script está en la carpeta /etl y los datos en /data/raw
-    ruta_dataset = os.path.join(os.path.dirname(__file__), '..', 'data', 'raw', 'dataset_movilidad_rm.csv')
+    ruta_dataset = os.path.join(os.path.dirname(__file__),'..', '..', 'data', 'raw','processed','dataset_movilidad_rm.csv')
     try:
         df = pd.read_csv(ruta_dataset)
         return df

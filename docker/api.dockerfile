@@ -2,7 +2,7 @@
 # Dockerfile para la API REST - Proyecto Movilidad RM
 # =============================================================================
 # Imagen base: Python 3.11 slim (Debian, ~150 MB)
-# Propósito: Servir la API Flask con Gunicorn en modo producción
+# Propósito: Servir la API FastAPI con Gunicorn + Uvicorn workers en producción
 # =============================================================================
 
 # 1. Imagen base con versión fija para reproducibilidad
@@ -13,16 +13,13 @@ FROM python:3.11-slim
 LABEL maintainer="equipo_dev@empresa.com"
 LABEL org.opencontainers.image.title="API Movilidad RM"
 LABEL org.opencontainers.image.version="1.0.0"
-LABEL org.opencontainers.image.description="API REST Flask para el sistema de movilidad de la Región Metropolitana"
+LABEL org.opencontainers.image.description="API REST FastAPI para el sistema de movilidad de la Región Metropolitana"
 
-# 3. Variables de entorno para Python y Flask
+# 3. Variables de entorno para Python
 #    - PYTHONDONTWRITEBYTECODE: Evita generar archivos .pyc innecesarios
 #    - PYTHONUNBUFFERED: Logs en tiempo real sin buffer (importante para Docker)
-#    - FLASK_APP: Punto de entrada de la aplicación
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    FLASK_APP=app/main.py \
-    FLASK_ENV=production
+    PYTHONUNBUFFERED=1
 
 # 4. Establecer directorio de trabajo dentro del contenedor
 WORKDIR /app
@@ -65,13 +62,15 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD curl --fail http://localhost:5000/ || exit 1
 
-# 12. Comando de inicio: Gunicorn como servidor WSGI de producción
+# 12. Comando de inicio: Gunicorn con Uvicorn workers (ASGI para FastAPI)
+#     - worker-class: uvicorn.workers.UvicornWorker para soporte async
 #     - workers: 4 procesos para manejar concurrencia
 #     - bind: Escucha en todas las interfaces en el puerto 5000
 #     - access-logfile: Logs de acceso a stdout para Docker
 CMD ["gunicorn", \
      "--bind", "0.0.0.0:5000", \
      "--workers", "4", \
+     "--worker-class", "uvicorn.workers.UvicornWorker", \
      "--access-logfile", "-", \
      "--error-logfile", "-", \
      "app.main:app"]
