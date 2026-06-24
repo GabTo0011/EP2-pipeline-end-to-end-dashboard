@@ -1,19 +1,40 @@
-# 1. Usa una versión específica y estable en lugar de 'latest' para evitar fallos si MySQL se actualiza
-FROM mysql:8.4.0
+# =============================================================================
+# Dockerfile para PostgreSQL - Base de datos de Movilidad RM
+# =============================================================================
+# Imagen base: PostgreSQL 15 sobre Alpine Linux (ligera, ~80 MB)
+# Propósito: Levantar una instancia PostgreSQL con esquema y datos iniciales
+# =============================================================================
 
-# 2. Buenas prácticas: Añadir metadatos para auditoría y mantenimiento del equipo de desarrollo
-LABEL maintainer="tu_equipo_dev@empresa.com"
-LABEL version="1.0.0"
-LABEL description="Imagen corporativa optimizada para MySQL con configuraciones de seguridad"
+# 1. Imagen base con versión fija para garantizar reproducibilidad
+FROM postgres:15-alpine
 
-# 3. Establece el directorio de trabajo oficial para scripts de inicialización automatizada
-WORKDIR /docker-entrypoint-initdb.d
+# 2. Metadatos del contenedor (OCI estándar)
+LABEL maintainer="equipo_dev@empresa.com"
+LABEL org.opencontainers.image.title="PostgreSQL Movilidad RM"
+LABEL org.opencontainers.image.version="1.0.0"
+LABEL org.opencontainers.image.description="Base de datos PostgreSQL para el sistema de movilidad de la Región Metropolitana"
 
-# 4. Copia archivos de configuración personalizados con permisos restringidos de lectura
-COPY --chown=mysql:mysql ./config/custom.cnf /etc/mysql/conf.d/
+# 3. Variables de entorno con valores por defecto
+#    Pueden sobreescribirse desde docker-compose o al ejecutar el contenedor
+ENV POSTGRES_USER=estudiante \
+    POSTGRES_PASSWORD=estudiante_password \
+    POSTGRES_DB=movilidad_rm_db
 
-# 5. Copia todos los script de inicialización (ej. crear tablas, poblar) que se ejecutará SOLO la primera vez, repetando el orden alfabético.
-COPY --chown=mysql:mysql ./*.sql .
+# 4. Copiar scripts de inicialización al directorio estándar de PostgreSQL
+#    - Los scripts en /docker-entrypoint-initdb.d/ se ejecutan SOLO en la primera
+#      inicialización del volumen de datos, respetando orden alfabético.
+#    - Se asigna el usuario postgres como propietario por seguridad.
+COPY --chown=postgres:postgres 01-schema.sql /docker-entrypoint-initdb.d/
+COPY --chown=postgres:postgres 02-data-db.sql /docker-entrypoint-initdb.d/
 
-# 6. Informa el puerto por el que escuchará el contenedor dentro de su red privada
-EXPOSE 3306
+# 5. Exponer el puerto estándar de PostgreSQL
+#    Esto documenta el puerto; el mapeo real se define en docker-compose.yml
+EXPOSE 5432
+
+# 6. Healthcheck para monitoreo del estado del contenedor
+#    Verifica que PostgreSQL acepte conexiones cada 10 segundos
+HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=3 \
+    CMD pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} || exit 1
+
+# 7. El ENTRYPOINT y CMD se heredan de la imagen base (postgres:15-alpine)
+#    No es necesario redefinirlos salvo personalización avanzada.

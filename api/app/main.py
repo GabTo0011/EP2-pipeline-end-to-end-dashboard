@@ -1,9 +1,43 @@
 import os
 import sys
 import subprocess
+import json
+from pathlib import Path
 
 import random
 from datetime import datetime, timedelta
+
+from fastapi import FastAPI, HTTPException
+from contextlib import asynccontextmanager
+import psycopg2
+
+# Carga de datos desde el archivo JSON montado como volumen en el contenedor
+# Ruta principal: /app/data/json/api-data.json (volumen Docker)
+# Fallback: ruta relativa para desarrollo local
+data_file = Path("/app/data/json/api-data.json")
+
+if not data_file.exists():
+    # Fallback para ejecución fuera de Docker (desarrollo local)
+    data_file = Path(__file__).resolve().parents[2] / "data" / "json" / "api-data.json"
+
+def cargar_datos():
+    try:
+        with data_file.open("r", encoding="utf-8") as f:
+            return json.load(f), 200
+
+    except FileNotFoundError as e:
+        return {
+            "mensaje": "El archivo JSON no existe en la ruta especificada.", 
+            "status": 404,
+            "error": str(e) # Convertimos la excepción a texto para que sea serializable
+        }, 404 # Retornamos código HTTP 404 Not Found
+
+    except json.JSONDecodeError as e:
+        return {
+            "mensaje": "Error de sintaxis o formato en el archivo JSON.", 
+            "status": 400,
+            "error": str(e)
+        }, 400 # Retornamos código HTTP 400 Bad Request
 
 
 if sys.platform == 'win32':
@@ -22,19 +56,15 @@ if sys.platform == 'win32':
     except Exception:
         pass
 
-from fastapi import FastAPI, HTTPException
-from contextlib import asynccontextmanager
-import psycopg2
-
 
 def conectar_bd():
     try:
         return psycopg2.connect(
-            host="127.0.0.1",
-            database="movilidad_rm_db",
-            user="estudiante",
-            password="estudiante_password",
-            port=5433,
+            host=os.getenv("DATABASE_HOST", "127.0.0.1"),
+            database=os.getenv("DATABASE_NAME", "movilidad_rm_db"),
+            user=os.getenv("DATABASE_USER", "estudiante"),
+            password=os.getenv("DATABASE_PASSWORD", "estudiante_password"),
+            port=int(os.getenv("DATABASE_PORT", "5432")),
             client_encoding='utf8'
         )
     except Exception as e:
@@ -566,5 +596,16 @@ def obtener_monitoreo():
 @app.get("/")
 def home():
     return {
-        "mensaje": "API Movilidad Urbana RM funcionando"
+        "mensaje": "API Movilidad Urbana RM funcionando - Docker y WSL2"
     }
+
+@app.route("/data",methods=["GET"])
+def get_data():
+    # Llamamos a la función: obtiene los datos (o el error) y el código HTTP
+    contenido, click_status = cargar_datos()
+    
+    return jsonify(contenido), click_status
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000,debug=True)
+

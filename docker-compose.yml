@@ -1,0 +1,180 @@
+# =============================================================================
+# Docker Compose - Proyecto Movilidad RM
+# =============================================================================
+# Orquestación de servicios para el sistema de análisis de movilidad.
+# Uso: docker-compose up -d --build
+# =============================================================================
+
+version: '3.8'
+
+name: 'servicios-ep3'
+
+services:
+  # ===========================================================================
+  # Servicio: Base de datos PostgreSQL
+  # ===========================================================================
+  # Construye la imagen desde db.dockerfile usando data/db/ como contexto
+  # para incluir los scripts SQL de inicialización.
+  # ===========================================================================
+  psql-db:
+    container_name: cont-db-psql-data-service
+    build:
+      # Contexto de build apunta a la carpeta con los scripts SQL y .dockerignore
+      context: ./data/db
+      # Ruta al Dockerfile relativa a la raíz del proyecto
+      dockerfile: ../../docker/db.dockerfile
+    image: 'servicios-ep3-img-psql-db:latest'
+    restart: unless-stopped
+    environment:
+      # Variables de conexión a PostgreSQL
+      # Sobreescriben los valores por defecto definidos en el Dockerfile
+      POSTGRES_USER: estudiante
+      POSTGRES_PASSWORD: estudiante_password
+      POSTGRES_DB: movilidad_rm_db
+    ports:
+      # Mapeo host:contenedor — Puerto 5432 estándar de PostgreSQL
+      - "5432:5432"
+    volumes:
+      # Volumen persistente para datos de PostgreSQL
+      # Garantiza que los datos sobrevivan a reinicios del contenedor
+      - psql_data:/var/lib/postgresql/data
+    healthcheck:
+      # Verifica que PostgreSQL acepte conexiones activamente
+      test: ["CMD-SHELL", "pg_isready -U estudiante -d movilidad_rm_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - app-network
+
+  # ===========================================================================
+  # Servicio: API REST (Flask + Gunicorn)
+  # ===========================================================================
+  # Construye la imagen desde api.dockerfile usando la carpeta api/ como contexto.
+  # Depende de psql-db: no arranca hasta que la base de datos pase el healthcheck.
+  # ===========================================================================
+  api:
+    container_name: cont-api-flask-service
+    build:
+      # Contexto de build: carpeta de la API (incluye .dockerignore propio)
+      context: ./api
+      # Ruta al Dockerfile relativa a la raíz del proyecto
+      dockerfile: ../docker/api.dockerfile
+    image: 'servicios-ep3-img-api:latest'
+    restart: unless-stopped
+    environment:
+      # Variables de entorno para la aplicación
+      # FLASK_ENV: production
+      FLASK_ENV: development # development para habilitar el Live Reload de Flask
+      # Cadena de conexión a PostgreSQL (referencia al servicio psql-db por nombre DNS)
+      DATABASE_HOST: psql-db
+      DATABASE_PORT: 5432
+      DATABASE_USER: estudiante
+      DATABASE_PASSWORD: estudiante_password
+      DATABASE_NAME: movilidad_rm_db
+    ports:
+      # Mapeo host:contenedor — Puerto 5000 para la API Flask
+      - "5000:5000"
+    volumes:
+      # Monta el archivo JSON de datos para consumo desde la API
+      - ./data/json/api-data.json:/app/data/json/api-data.json:ro
+    depends_on:
+      # La API NO arranca hasta que PostgreSQL esté saludable (healthcheck OK)
+      psql-db:
+        condition: service_healthy
+    healthcheck:
+      # Verifica que la API responda en su endpoint raíz
+      test: ["CMD-SHELL", "curl --fail http://localhost:5000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    networks:
+      - app-network
+    # 🟢 CONFIGURACIÓN DE WATCH PARA DESARROLLO EN CALIENTE
+    develop:
+      watch:
+        # 1. Sincroniza cambios en archivos Python de la API
+        - action: sync
+          path: ./api
+          target: /app
+          ignore:
+            - __pycache__/
+            - .pytest_cache/
+        # 2. Reconstruye la imagen si cambia requirements.txt
+        - action: rebuild
+          path: ./api/requirements.txt
+
+  # ===========================================================================
+  # Servicio: Dashboard Streamlit
+  # ===========================================================================
+  # Construye la imagen desde dashboard.dockerfile usando dashboards/ como contexto.
+  # Monta el CSV procesado como volumen de solo lectura para visualización.
+  # ===========================================================================
+  dashboard:
+    container_name: cont-dashboard-streamlit-service
+    build:
+      # Contexto de build: carpeta del dashboard (incluye .dockerignore propio)
+      context: ./dashboards
+      # Ruta al Dockerfile relativa a la raíz del proyecto
+      dockerfile: ../docker/dashboard.dockerfile
+    image: 'servicios-ep3-img-dashboard:latest'
+    restart: unless-stopped
+    environment:
+      # Variables de entorno para Streamlit en producción
+      STREAMLIT_SERVER_HEADLESS: "true"
+      STREAMLIT_BROWSER_GATHER_USAGE_STATS: "false"
+    ports:
+      # Mapeo host:contenedor — Puerto 8501 estándar de Streamlit
+      - "8501:8501"
+    volumes:
+      # Monta el dataset procesado en la ruta que espera app.py
+      # app.py resuelve: /app/dash/../../data/raw/processed/ = /data/raw/processed/
+      # Se monta el CSV directamente en esa ubicación (solo lectura)
+      - ./data/processed/dataset_movilidad_rm.csv:/data/raw/processed/dataset_movilidad_rm.csv:ro
+    depends_on:
+      # El dashboard arranca después de la API (orden lógico del stack)
+      api:
+        condition: service_healthy
+      psql-db:
+        condition: service_healthy
+    healthcheck:
+      # Verifica que Streamlit responda en su endpoint de salud interno
+      test: ["CMD-SHELL", "curl --fail http://localhost:8501/_stcore/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      - app-network
+    # 🟢 CONFIGURACIÓN DE WATCH PARA DESARROLLO EN CALIENTE
+    develop:
+      watch:
+        # 1. Sincroniza cambios en archivos del dashboard
+        - action: sync
+          path: ./dashboards
+          target: /app
+          ignore:
+            - __pycache__/
+            - .pytest_cache/
+        # 2. Reconstruye la imagen si cambia requirements.txt
+        - action: rebuild
+          path: ./dashboards/requirements.txt
+
+# =============================================================================
+# Redes
+# =============================================================================
+# Red bridge personalizada para comunicación interna entre servicios.
+# Los servicios se descubren por nombre (psql-db, api, dashboard) como DNS interno.
+networks:
+  app-network:
+    driver: bridge
+
+# =============================================================================
+# Volúmenes
+# =============================================================================
+# Volumen nombrado para persistencia de datos PostgreSQL
+volumes:
+  psql_data:
+    driver: local

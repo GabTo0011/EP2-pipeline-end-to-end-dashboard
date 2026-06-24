@@ -1,0 +1,15 @@
+# =============================================================================
+# Dependencias del Dashboard de Movilidad RM
+# =============================================================================
+# Versiones fijas (pinned) para garantizar reproducibilidad en contenedores.
+# Actualizar periódicamente con: pip-compile o pip list --outdated
+# =============================================================================
+
+# Framework principal del dashboard interactivo
+streamlit==1.37.0
+
+# Manipulación y análisis de datos tabulares
+pandas==2.2.2
+
+# Visualizaciones interactivas (gráficos y mapas)
+plotly==5.22.0
