@@ -94,6 +94,7 @@ services:
       start_period: 15s
     networks:
       - app-network
+      
     # 🟢 CONFIGURACIÓN DE WATCH PARA DESARROLLO EN CALIENTE
     develop:
       watch:
@@ -114,8 +115,8 @@ services:
   etl:
     container_name: cont-etl-service
     build:
-      context: .
-      dockerfile: docker/etl.dockerfile
+      context: ./etl
+      dockerfile: ../docker/etl.dockerfile
     image: 'servicios-ep3-img-etl:latest'
     environment:
       # Conectar a la API interna de Docker
