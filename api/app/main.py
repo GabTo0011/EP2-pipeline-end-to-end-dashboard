@@ -10,10 +10,6 @@ from datetime import datetime, timedelta
 from fastapi import FastAPI, HTTPException
 from contextlib import asynccontextmanager
 import psycopg2
-from pydantic import BaseModel
-import pandas as pd
-
-from app.ml_service import predecir
 
 # Carga de datos desde el archivo JSON montado como volumen en el contenedor
 # Ruta principal: /app/data/json/api-data.json (volumen Docker)
@@ -78,22 +74,6 @@ def conectar_bd():
         print("="*50 + "\n")
         raise e
 
-class PredictionRequest(BaseModel):
-    comuna_id: int
-    comuna: str
-    ingreso_promedio_hogar: float
-    paradero_id: int
-    latitud: float
-    longitud: float
-    recorrido_id: int
-    recorrido: str
-    empresa_operadora: str
-    capacidad_pasajeros: int
-    flujo_pasajeros: int
-    velocidad_promedio: float
-    hora: int
-    dia: int
-    mes: int
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -613,53 +593,19 @@ def obtener_monitoreo():
 
     return lista_monitoreo
 
-
 @app.get("/")
 def home():
     return {
         "mensaje": "API Movilidad Urbana RM funcionando - Docker y WSL2"
     }
 
-# =====================================================
-# PREDICCIÓN ML
-# =====================================================
-@app.post("/api/predict")
-def predict(request: PredictionRequest):
-    try:
+@app.route("/data",methods=["GET"])
+def get_data():
+    # Llamamos a la función: obtiene los datos (o el error) y el código HTTP
+    contenido, click_status = cargar_datos()
+    
+    return jsonify(contenido), click_status
 
-        df = pd.DataFrame([request.model_dump()])
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000,debug=True)
 
-        # Mantener el mismo orden usado durante el entrenamiento
-        df = df[
-            [
-                "comuna_id",
-                "comuna",
-                "ingreso_promedio_hogar",
-                "paradero_id",
-                "latitud",
-                "longitud",
-                "recorrido_id",
-                "recorrido",
-                "empresa_operadora",
-                "capacidad_pasajeros",
-                "flujo_pasajeros",
-                "velocidad_promedio",
-                "hora",
-                "dia",
-                "mes"
-            ]
-        ]
-
-        resultado = predecir(df)
-
-        return {
-            "status": "success",
-            "prediccion": round(float(resultado[0]), 2),
-            "unidad": "minutos"
-        }
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error al generar la predicción: {str(e)}"
-        )
