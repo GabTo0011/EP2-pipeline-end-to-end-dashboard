@@ -79,6 +79,8 @@ services:
     volumes:
       # Monta el archivo JSON de datos para consumo desde la API
       - ./data/json/api-data.json:/app/data/json/api-data.json:ro
+      # Se agrega la ruta del modelo
+      - ./models:/app/models:ro
     depends_on:
       # La API NO arranca hasta que PostgreSQL esté saludable (healthcheck OK)
       psql-db:
@@ -133,6 +135,7 @@ services:
       # app.py resuelve: /app/dash/../../data/raw/processed/ = /data/raw/processed/
       # Se monta el CSV directamente en esa ubicación (solo lectura)
       - ./data/processed/dataset_movilidad_rm.csv:/data/raw/processed/dataset_movilidad_rm.csv:ro
+
     depends_on:
       # El dashboard arranca después de la API (orden lógico del stack)
       api:
