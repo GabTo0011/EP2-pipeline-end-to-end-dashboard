@@ -5,8 +5,6 @@
 # Uso: docker-compose up -d --build
 # =============================================================================
 
-version: '3.8'
-
 name: 'servicios-ep3'
 
 services:
@@ -49,7 +47,7 @@ services:
       - app-network
 
   # ===========================================================================
-  # Servicio: API REST (Flask + Gunicorn)
+  # Servicio: API REST (FastAPI + Gunicorn/Uvicorn)
   # ===========================================================================
   # Construye la imagen desde api.dockerfile usando la carpeta api/ como contexto.
   # Depende de psql-db: no arranca hasta que la base de datos pase el healthcheck.
@@ -65,8 +63,7 @@ services:
     restart: unless-stopped
     environment:
       # Variables de entorno para la aplicación
-      # FLASK_ENV: production
-      FLASK_ENV: development # development para habilitar el Live Reload de Flask
+      FLASK_ENV: development # development para habilitar el Live Reload
       # Cadena de conexión a PostgreSQL (referencia al servicio psql-db por nombre DNS)
       DATABASE_HOST: psql-db
       DATABASE_PORT: 5432
@@ -74,19 +71,23 @@ services:
       DATABASE_PASSWORD: estudiante_password
       DATABASE_NAME: movilidad_rm_db
     ports:
-      # Mapeo host:contenedor — Puerto 5000 para la API Flask
-      - "5000:5000"
+      # 🟢 MODIFICADO: Puerto 8000 en tu máquina local apunta al 5000 interno del contenedor
+      - "8000:5000"
     volumes:
       # Monta el archivo JSON de datos para consumo desde la API
       - ./data/json/api-data.json:/app/data/json/api-data.json:ro
+<<<<<<< HEAD
       # Se agrega la ruta del modelo
+=======
+      # Monta los modelos entrenados (.pkl) para que estén al alcance de la API
+>>>>>>> 29831b2 (feat: actualizacion de Dashboard)
       - ./models:/app/models:ro
     depends_on:
       # La API NO arranca hasta que PostgreSQL esté saludable (healthcheck OK)
       psql-db:
         condition: service_healthy
     healthcheck:
-      # Verifica que la API responda en su endpoint raíz
+      # Verifica que la API responda internamente en su puerto nativo 5000
       test: ["CMD-SHELL", "curl --fail http://localhost:5000/ || exit 1"]
       interval: 30s
       timeout: 10s
@@ -159,11 +160,15 @@ services:
       - "8501:8501"
     volumes:
       # Monta el dataset procesado en la ruta que espera app.py
+<<<<<<< HEAD
       # app.py resuelve: /app/dash/../../data/raw/processed/ = /data/raw/processed/
       # Se monta el CSV directamente en esa ubicación (solo lectura)
       # - ./data/processed/dataset_movilidad_rm.csv:/data/raw/processed/dataset_movilidad_rm.csv:ro
       - ./data/processed:/data/raw/processed:ro
       
+=======
+      - ./data/processed/dataset_movilidad_rm.csv:/data/raw/processed/dataset_movilidad_rm.csv:ro
+>>>>>>> 29831b2 (feat: actualizacion de Dashboard)
     depends_on:
       # El dashboard arranca después de la API (orden lógico del stack)
       api:
@@ -199,7 +204,6 @@ services:
 # Redes
 # =============================================================================
 # Red bridge personalizada para comunicación interna entre servicios.
-# Los servicios se descubren por nombre (psql-db, api, dashboard) como DNS interno.
 networks:
   app-network:
     driver: bridge

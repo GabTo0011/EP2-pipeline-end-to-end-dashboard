@@ -13,3 +13,4 @@ pandas==2.2.2
 
 # Visualizaciones interactivas (gráficos y mapas)
 plotly==5.22.0
+scikit-learn
