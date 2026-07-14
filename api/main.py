@@ -1,137 +1,101 @@
-import os
-import pickle
-import logging
-import pandas as pd  
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+import streamlit as st
+import requests
+import pandas as pd
 
-# Configuración del Logging solicitado
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[
-        logging.FileHandler("api_server.log", encoding="utf-8"),
-        logging.StreamHandler()
-    ]
+# =============================================================================
+# Configuración de la Interfaz del Dashboard (Streamlit)
+# =============================================================================
+st.set_page_config(
+    page_title="Dashboard de Movilidad RM",
+    page_icon="🚌",
+    layout="wide"
 )
 
-app = FastAPI(
-    title="API de Optimización de Demanda - Red Movilidad (MTT)",
-    description="API REST funcional para la predicción y segmentación de subidas de pasajeros por bloques horarios.",
-    version="1.0.0"
+st.title("🚌 Sistema de Optimización de Demanda - Red Movilidad")
+st.markdown("---")
+
+# 🟢 CONFIGURACIÓN CORREGIDA: Apunta a la API REST en el puerto 8000
+#API_URL = "http://127.0.0.1:8000/api/v1/predict"
+API_URL = "http://api:5000/api/v1/predict"
+# =============================================================================
+# Selectores de la Barra Lateral (Filtros)
+# =============================================================================
+st.sidebar.header("Filtros de Predicción")
+
+comuna = st.sidebar.selectbox(
+    "Selecciona la Comuna:",
+    ["SANTIAGO", "PROVIDENCIA", "LAS CONDES", "MAIPU", "FLORIDA"]
 )
 
-# 1. Definición del Esquema de Entrada utilizando Pydantic
-class PrediccionRequest(BaseModel):
-    Comuna: str
-    Tipo_dia: str
-    Media_hora: str
+tipo_dia = st.sidebar.selectbox(
+    "Tipo de Día:",
+    ["LABORAL", "SABADO", "DOMINGO"]
+)
 
-# 2. Variables globales para los modelos
-modelo_supervisado = None
-modelo_no_supervisado = None
+bloque_horario = st.sidebar.selectbox(
+    "Bloque Horario (Media Hora):",
+    ["07:00:00", "07:30:00", "08:00:00", "08:30:00", "09:00:00", 
+     "12:00:00", "14:00:00", "18:00:00", "18:30:00", "19:00:00", "20:00:00"]
+)
 
-@app.on_event("startup")
-def cargar_modelos():
-    """
-    Carga los modelos entrenados al iniciar la API de forma segura.
-    """
-    global modelo_supervisado, modelo_no_supervisado
+# =============================================================================
+# Ejecución de la Predicción al hacer Click
+# =============================================================================
+if st.sidebar.button("Calcular Predicción de Demanda 🚀"):
     
-    ruta_sup = "models/modelo_regresion.pkl"
-    ruta_no_sup = "models/modelo_kmeans.pkl"
-    
-    logging.info("Iniciando servicio y verificando artefactos de Machine Learning...")
-    
-    if os.path.exists(ruta_sup) and os.path.exists(ruta_no_sup):
-        try:
-            with open(ruta_sup, "rb") as f:
-                modelo_supervisado = pickle.load(f)
-            with open(ruta_no_sup, "rb") as f:
-                modelo_no_supervisado = pickle.load(f)
-            logging.info("Modelos de Machine Learning cargados exitosamente desde la carpeta /models/")
-        except Exception as e:
-            logging.error(f"Error al deserializar los archivos de modelos: {str(e)}")
-    else:
-        logging.warning("Los archivos .pkl no se encuentran en /models/. Se activará el modo de simulación temporal.")
-
-# Diccionarios de mapeo rápido para convertir texto a números (Label Encoding básico)
-comuna_mapping = {"SANTIAGO": 0, "PROVIDENCIA": 1, "LAS CONDES": 2, "MAIPU": 3, "FLORIDA": 4}
-tipo_dia_mapping = {"LABORAL": 0, "SABADO": 1, "DOMINGO": 2}
-
-def transformar_entrada(request: PrediccionRequest):
-    """Convierte los textos de la petición en características numéricas para el modelo"""
-    # Convertimos a mayúsculas para evitar errores de tipeo
-    comuna_idx = comuna_mapping.get(request.Comuna.upper(), 0) 
-    tipo_dia_idx = tipo_dia_mapping.get(request.Tipo_dia.upper(), 0)
-    
-    # Extraemos la hora como un número flotante (ej: "07:30:00" -> 7.5)
-    try:
-        partes = request.Media_hora.split(":")
-        hora_num = float(partes[0]) + (float(partes[1]) / 60.0)
-    except:
-        hora_num = 12.0 # Valor por defecto si el formato falla
-        
-    # El modelo fue entrenado con 3 características (features)
-    return pd.DataFrame([[comuna_idx, hora_num, tipo_dia_idx]], columns=['feature_1', 'feature_2', 'feature_3'])
-
-# 3. Endpoints de la API REST 
-@app.get("/")
-def home():
-    return {
-        "status": "Operativa",
-        "proyecto": "EFT - Programación para la Ciencia de Datos",
-        "caso": "Matrices de Viajes MTT 2026"
+    # Payload con la estructura exacta que espera el Pydantic de la API
+    payload = {
+        "Comuna": comuna,
+        "Tipo_dia": tipo_dia,
+        "Media_hora": bloque_horario
     }
-
-@app.post("/api/v1/predict")
-def predecir_demanda(request: PrediccionRequest):
-    """
-    Endpoint principal para predecir la afluencia de pasajeros en un paradero/comuna.
-    Devuelve la estimación utilizando los modelos cargados en memoria.
-    """
-    logging.info(f"Petición recibida para Comuna: {request.Comuna}, Horario: {request.Media_hora}")
     
-    if not request.Comuna.strip() or not request.Media_hora.strip():
-        logging.error("Petición rechazada: Campos obligatorios vacíos.")
-        raise HTTPException(status_code=400, detail="La comuna y la media hora no pueden estar vacías.")
-
+    st.subheader(f"📊 Resultados de Análisis para {comuna}")
+    
     try:
-        if modelo_supervisado is not None and modelo_no_supervisado is not None:
-            # --- PREDICCIÓN REAL ---
-            # 1. Transformamos los datos de entrada
-            features = transformar_entrada(request)
-            
-            # 2. Ejecutamos los modelos .predict() reales de Scikit-Learn
-            pred_subidas = modelo_supervisado.predict(features)[0]
-            pred_cluster = modelo_no_supervisado.predict(features)[0]
-            
-            # Evitamos que la regresión devuelva números negativos de subidas
-            subidas_estimadas = max(0.0, float(pred_subidas))
-            cluster_asignado = int(pred_cluster)
-            metodo = "Modelo_Produccion_ML"
-        else:
-            # --- MODO SIMULACIÓN (FALLBACK) ---
-            es_hora_punta = request.Media_hora in ["07:30:00", "08:00:00", "08:30:00", "18:00:00", "18:30:00", "19:00:00"]
-            if request.Tipo_dia.upper() == "DOMINGO":
-                subidas_estimadas = 14.5 if es_hora_punta else 4.2
-                cluster_asignado = 1
-            else:
-                subidas_estimadas = 92.4 if es_hora_punta else 18.3
-                cluster_asignado = 3
-            metodo = "Simulador_EFT_Fallback"
-
-        logging.info(f"Predicción calculada con éxito -> Subidas: {subidas_estimadas}, Cluster: {cluster_asignado}")
+        # Realizar la petición POST al contenedor de la API
+        response = requests.post(API_URL, json=payload, timeout=5)
         
-        return {
-            "comuna": request.Comuna.upper(),
-            "tipo_dia": request.Tipo_dia.upper(),
-            "bloque_horario": request.Media_hora,
-            "subidas_promedio_estimadas": round(subidas_estimadas, 1),
-            "cluster_comportamiento": cluster_asignado,
-            "metodo_calculo": metodo
-        }
-
+        if response.status_code == 200:
+            data = response.json()
+            
+            # Crear las tarjetas visuales de los KPI
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                st.metric(
+                    label="Subidas Estimadas Promedio", 
+                    value=f"{data['subidas_promedio_estimadas']} pas."
+                )
+            
+            with col2:
+                st.metric(
+                    label="Cluster de Comportamiento", 
+                    value=f"Grupo {data['cluster_comportamiento']}"
+                )
+                
+            with col3:
+                st.metric(
+                    label="Método de Cálculo Utilizado", 
+                    value=data['metodo_calculo']
+                )
+            
+            st.success("✨ ¡Datos obtenidos exitosamente de la API REST!")
+            
+            # Mostrar la respuesta cruda en un bloque organizado
+            with st.expander("Ver respuesta detallada en formato JSON"):
+                st.json(data)
+                
+        else:
+            st.error(f"❌ La API respondió con código de error {response.status_code}")
+            st.warning(response.text)
+            
+    except requests.exceptions.ConnectionError:
+        st.error(f"🚨 No se pudo conectar con la API REST en la URL: {API_URL}")
+        st.info("Asegúrate de que el contenedor de la API esté corriendo y respondiendo en el puerto 8000.")
+        
     except Exception as e:
-        logging.critical(f"Error interno del servidor al procesar predicción: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error interno en el cálculo de la demanda: {str(e)}")
+        st.error(f"💥 Ocurrió un error inesperado al realizar la consulta: {str(e)}")
+
+else:
+    st.info("💡 Modifica los filtros en la barra lateral izquierda y haz clic en **Calcular Predicción de Demanda** para procesar los datos de los modelos.")
