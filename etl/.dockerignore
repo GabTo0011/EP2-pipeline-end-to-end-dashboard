@@ -1,0 +1,33 @@
+# ==========================================
+# .dockerignore para el servicio ETL
+# ==========================================
+
+# 1. Caché y archivos compilados de Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 2. Entornos virtuales locales
+venv/
+env/
+.venv/
+.env
+
+# 3. Archivos de análisis y experimentación
+# Los notebooks son para exploración local, no se necesitan en el contenedor final
+notebooks/
+.ipynb_checkpoints/
+
+# 4. Logs
+*.log
+
+# 5. Archivos del Sistema Operativo
+.DS_Store
+Thumbs.db
+
+# 6. Configuraciones de IDEs locales
+.vscode/
+.idea/
