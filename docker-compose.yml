@@ -94,6 +94,7 @@ services:
       start_period: 15s
     networks:
       - app-network
+      
     # 🟢 CONFIGURACIÓN DE WATCH PARA DESARROLLO EN CALIENTE
     develop:
       watch:
@@ -107,6 +108,32 @@ services:
         # 2. Reconstruye la imagen si cambia requirements.txt
         - action: rebuild
           path: ./api/requirements.txt
+
+  # ===========================================================================
+  # Servicio: Pipeline ETL
+  # ===========================================================================
+  etl:
+    container_name: cont-etl-service
+    build:
+      context: ./etl
+      dockerfile: ../docker/etl.dockerfile
+    image: 'servicios-ep3-img-etl:latest'
+    environment:
+      # Conectar a la API interna de Docker
+      - API_BASE_URL=http://api:5000/api
+      # Guardar archivos en la ruta del volumen
+      - OUTPUT_DIR=/app/data/processed
+    volumes:
+      # Mapear la carpeta processed local para que persistan los CSVs
+      - ./data/processed:/app/data/processed
+    depends_on:
+      # El ETL NO arranca hasta que la API esté 100% saludable
+      api:
+        condition: service_healthy
+    networks:
+      - app-network
+
+
 
   # ===========================================================================
   # Servicio: Dashboard Streamlit
@@ -134,14 +161,17 @@ services:
       # Monta el dataset procesado en la ruta que espera app.py
       # app.py resuelve: /app/dash/../../data/raw/processed/ = /data/raw/processed/
       # Se monta el CSV directamente en esa ubicación (solo lectura)
-      - ./data/processed/dataset_movilidad_rm.csv:/data/raw/processed/dataset_movilidad_rm.csv:ro
-
+      # - ./data/processed/dataset_movilidad_rm.csv:/data/raw/processed/dataset_movilidad_rm.csv:ro
+      - ./data/processed:/data/raw/processed:ro
+      
     depends_on:
       # El dashboard arranca después de la API (orden lógico del stack)
       api:
         condition: service_healthy
       psql-db:
         condition: service_healthy
+      etl:
+        condition: service_completed_successfully # 🟢 Nueva condición clave
     healthcheck:
       # Verifica que Streamlit responda en su endpoint de salud interno
       test: ["CMD-SHELL", "curl --fail http://localhost:8501/_stcore/health || exit 1"]
