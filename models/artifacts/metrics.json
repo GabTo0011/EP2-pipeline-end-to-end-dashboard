@@ -1,0 +1,11 @@
+{
+    "modelo": "Gradient Boosting",
+    "mae": 1.68,
+    "rmse": 2.12,
+    "r2": 0.9816,
+    "best_params": {
+        "model__learning_rate": 0.05,
+        "model__max_depth": 3,
+        "model__n_estimators": 100
+    }
+}
