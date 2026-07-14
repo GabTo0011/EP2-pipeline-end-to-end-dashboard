@@ -10,11 +10,21 @@ fastapi==0.115.0
 # Servidor ASGI para FastAPI (worker para gunicorn)
 uvicorn[standard]==0.30.6
 
+
 # Servidor WSGI/ASGI de producción (gestiona workers)
 gunicorn==22.0.0
+
 
 # Driver de conexión a PostgreSQL
 psycopg2-binary==2.9.9
 
 # Flask se mantiene por compatibilidad con rutas legacy (/data)
 Flask==3.0.3
+# ==========================
+# Machine Learning
+# ==========================
+
+pandas==2.3.1
+numpy==2.4.4
+scikit-learn==1.8.0
+joblib==1.5.3
