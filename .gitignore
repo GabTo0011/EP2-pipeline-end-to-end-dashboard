@@ -64,3 +64,9 @@ docker-compose.override.yml
 .snakemake/
 .dask/
 .cache/
+
+# Permitir subir los artefactos del modelo
+!models/
+!models/artifacts/
+!models/artifacts/best_model.pkl
+!models/artifacts/metrics.json
