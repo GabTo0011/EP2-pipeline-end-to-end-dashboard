@@ -1,0 +1,9 @@
+cat << 'EOF' > requirements.txt
+fastapi
+uvicorn
+pydantic
+pandas
+scikit-learn
+httpx
+pytest
+EOF
