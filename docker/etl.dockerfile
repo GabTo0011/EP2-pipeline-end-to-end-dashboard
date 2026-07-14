@@ -6,7 +6,7 @@ WORKDIR /app
 # 6. Copiar SOLO el archivo de dependencias primero
 #    Esto aprovecha la caché de capas de Docker: si requirements.txt no cambia,
 #    no se reinstalan las dependencias al reconstruir la imagen
-COPY requirements.txt .
+COPY ../../requirements.txt .
 
 # 7. Instalar dependencias de Python
 #    --no-cache-dir: No almacena cache de pip (reduce tamaño de imagen)
@@ -15,7 +15,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
 # Copiar el script
-COPY ./app/pipeline_etl.py /app/pipeline_etl.py
+COPY ./app/main_etl.py /app/main_etl.py
 
 # Ejecutar el script por defecto
-CMD ["python", "pipeline_etl.py"]
+CMD ["python", "main_etl.py"]

@@ -17,6 +17,7 @@ st.set_page_config(
 )
 
 API_URL = "http://api:5000/api/v1/predict"
+API_BASE_URL = "http://api:5000"
 
 st.title("🚌 Sistema de Optimización de Flotas - MTT")
 st.markdown("---")
@@ -217,7 +218,21 @@ st.markdown("---")
 # --- BARRA LATERAL (Filtros de Entrada para la API) ---
 st.sidebar.header("🎛️ Parámetros de Simulación")
 
+# try:
+#     response = requests.get(f"{API_BASE_URL}/api/comunas", timeout=5)
+#     if response.status_code == 200:
+#         comunas_data = response.json()
+#         # Extraer solo los nombres de las comunas como lista
+#         lista_comunas = [c["nombre"].strip().upper() for c in comunas_data]
+#     else:
+#         st.error(f"Error en la API REST: {response.status_code}")
+#         lista_comunas = []
+# except Exception as e:
+#     st.error(f"No se pudo conectar con la API REST en el puerto 5000: {e}")
+#     lista_comunas = []
+
 comuna_input = st.sidebar.text_input("Comuna (Ej: SANTIAGO, MAIPU, PUENTE ALTO)", "SANTIAGO").upper().strip()
+# comuna_input = st.sidebar.selectbox("Comuna (Ej: SANTIAGO, MAIPU, PUENTE ALTO)", lista_comunas)
 tipo_dia_input = st.sidebar.selectbox("Tipo de Día", ["LABORAL", "SABADO", "DOMINGO"])
 media_hora_input = st.sidebar.selectbox(
     "Bloque Horario (Media Hora)",
