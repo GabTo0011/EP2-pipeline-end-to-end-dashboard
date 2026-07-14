@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import os
-import requests
 
 # --- CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(
@@ -28,48 +27,6 @@ def cargar_datos():
 
 df = cargar_datos()
 
-# -----------------------------
-# Consumir API de predicción
-# -----------------------------
-def obtener_prediccion(
-    flujo,
-    velocidad,
-    capacidad):
-
-    payload = {
-        "comuna_id": 2,
-        "comuna": "Maipú",
-        "ingreso_promedio_hogar": 950000,
-        "paradero_id": 102,
-        "latitud": -33.509,
-        "longitud": -70.757,
-        "recorrido_id": 210,
-        "recorrido": "210",
-        "empresa_operadora": "Metbus",
-        "capacidad_pasajeros": capacidad,
-        "flujo_pasajeros": flujo,
-        "velocidad_promedio": velocidad,
-        "hora": 8,
-        "dia": 15,
-        "mes": 6
-    }
-
-    try:
-        response = requests.post(
-            "http://api:5000/api/predict",
-            json=payload,
-            timeout=5
-        )
-
-        if response.status_code == 200:
-            return response.json()["prediccion"]
-
-        return None
-
-    except Exception as e:
-        st.warning(f"No se pudo obtener la predicción de la API: {e}")
-        return None
-
 if df is not None:
     st.title("🚌 Dashboard de Movilidad en la Región Metropolitana")
 
@@ -79,29 +36,6 @@ if df is not None:
         "Elige tu perfil:",
         ("Ejecutivo", "Técnico", "Operativo")
     )
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("Simulación de Predicción ML")
-
-    flujo = st.sidebar.slider(
-        "Flujo de pasajeros",
-        min_value=20,
-        max_value=300,
-        value=80
-    )
-
-    velocidad = st.sidebar.slider(
-        "Velocidad promedio (km/h)",
-        min_value=10,
-        max_value=60,
-        value=35
-    )
-
-    capacidad_vehiculo = st.sidebar.slider(
-        "Capacidad del vehículo",
-        min_value=40,
-        max_value=200,
-        value=120
-    )
 
     # --- VISTA PARA CADA AUDIENCIA ---
     if audiencia == "Ejecutivo":
@@ -109,117 +43,31 @@ if df is not None:
         st.markdown("""
         Esta vista presenta los indicadores clave (KPIs) del sistema de transporte para la toma de decisiones estratégicas.
         """)
-        # ==========================
-        # KPIs
-        # ==========================
-        prediccion = obtener_prediccion(
-            flujo,
-            velocidad,
-            capacidad_vehiculo
-        )
 
-        capacidad_utilizada = (
-            (df["flujo_pasajeros"] / df["capacidad_pasajeros"])
-            .clip(upper=1)
-            .mean() * 100
-        )
-
-        comuna_critica = (
-            df.groupby("comuna")["flujo_pasajeros"]
-            .sum()
-            .idxmax()
-        )
-
-        fila1 = st.columns(3)
-
-        fila1[0].metric(
-            "Tiempo Promedio",
-            f"{df['tiempo_promedio_viaje'].mean():.2f} min"
-        )
-
-        fila1[1].metric(
-            "Flujo Promedio",
-            f"{df['flujo_pasajeros'].mean():.0f}"
-        )
-
-        fila1[2].metric(
-            "Velocidad Promedio",
-            f"{df['velocidad_promedio'].mean():.2f} km/h"
-        )
-
-        fila2 = st.columns(3)
-
-        fila2[0].metric(
-            "Capacidad Utilizada",
-            f"{capacidad_utilizada:.1f}%"
-        )
-
-        fila2[1].metric(
-            "Comuna con Mayor Demanda",
-            comuna_critica
-        )
-
-        fila2[2].metric(
-            "Tiempo Estimado",
-            f"{prediccion:.2f} min" if prediccion else "Sin respuesta"
-        )
-        st.caption(
-            f"Predicción calculada con "
-            f"Flujo={flujo}, "
-            f"Velocidad={velocidad} km/h, "
-            f"Capacidad={capacidad_vehiculo}"
-        )
-        # ==========================
-        # Gráfico 1
-        # ==========================
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Total de Viajes Monitoreados", f"{df.shape[0]:,}")
+        col2.metric("Velocidad Promedio", f"{df['velocidad_promedio'].mean():.2f} km/h")
+        col3.metric("Comuna más Frecuente", df['comuna'].mode()[0])
 
         st.subheader("Distribución de Viajes por Comuna de Origen")
-
         fig_comunas = px.bar(
-            df["comuna"].value_counts().nlargest(10),
+            df['comuna'].value_counts().nlargest(10),
             title="Top 10 Comunas con más Viajes",
-            labels={
-                "value": "Número de Viajes",
-                "index": "Comuna"
-            }
+            labels={'value': 'Número de Viajes', 'index': 'Comuna'}
         )
-
-        st.plotly_chart(
-            fig_comunas,
-            use_container_width=True
-        )
-
-        # ==========================
-        # Gráfico 2
-        # ==========================
+        st.plotly_chart(fig_comunas, use_container_width=True)
 
         st.subheader("Flujo de Pasajeros por Hora")
-
-        df_grafico = df.copy()
-
-        df_grafico["fecha_hora"] = pd.to_datetime(df_grafico["fecha_hora"])
-
-        flujo_por_hora = (
-            df_grafico
-            .groupby(df_grafico["fecha_hora"].dt.hour)["flujo_pasajeros"]
-            .sum()
-        )
-
-        fig_hora = px.line(
+        df['fecha_hora'] = pd.to_datetime(df['fecha_hora'])
+        flujo_por_hora = df.groupby(df['fecha_hora'].dt.hour)['flujo_pasajeros'].sum()
+        fig_comunas = px.line(
             x=flujo_por_hora.index,
             y=flujo_por_hora.values,
-            title="Flujo de Pasajeros Total por Hora del Día",
-            labels={
-                "x": "Hora",
-                "y": "Flujo de Pasajeros"
-            },
+            title="Flujo de Pasajeros total por Hora del Día",
+            labels={'x': 'Hora del Día', 'y': 'Total Flujo Pasajeros'},
             markers=True
         )
-
-        st.plotly_chart(
-            fig_hora,
-            use_container_width=True
-        )
+        st.plotly_chart(fig_comunas, use_container_width=True)
 
     elif audiencia == "Técnico":
         st.header("Análisis Técnico del Sistema")
